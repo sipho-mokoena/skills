@@ -206,7 +206,7 @@ mutation {{
     dataType: {args.data_type}
     {opts_json}
   }}) {{
-    field {{
+    projectV2Field {{
       __typename
       ... on ProjectV2Field {{ id name dataType }}
       ... on ProjectV2SingleSelectField {{ id name options {{ id name }} }}
@@ -218,7 +218,7 @@ mutation {{
     data = gh_graphql(q, args.dry_run, args.quiet)
     if args.dry_run:
         return
-    field = data["createProjectV2Field"]["field"]
+    field = data["createProjectV2Field"]["projectV2Field"]
     if args.json:
         print(json.dumps(field, indent=2))
     else:
@@ -425,13 +425,13 @@ mutation {{
     dataType: SINGLE_SELECT
     singleSelectOptions: {status_opts}
   }}) {{
-    field {{ ... on ProjectV2SingleSelectField {{ id name options {{ id name }} }} }}
+    projectV2Field {{ ... on ProjectV2SingleSelectField {{ id name options {{ id name }} }} }}
   }}
 }}
 """
     data_status = gh_graphql(q_status, args.dry_run, args.quiet)
     if not args.dry_run and not args.quiet:
-        sid = data_status["createProjectV2Field"]["field"]["id"]
+        sid = data_status["createProjectV2Field"]["projectV2Field"]["id"]
         print(f"Created Status field ({sid}) with 5 options.")
 
     q_comp = f"""
@@ -441,13 +441,13 @@ mutation {{
     name: "Component"
     dataType: SINGLE_SELECT
   }}) {{
-    field {{ ... on ProjectV2SingleSelectField {{ id name }} }}
+    projectV2Field {{ ... on ProjectV2SingleSelectField {{ id name }} }}
   }}
 }}
 """
     data_comp = gh_graphql(q_comp, args.dry_run, args.quiet)
     if not args.dry_run and not args.quiet:
-        cid = data_comp["createProjectV2Field"]["field"]["id"]
+        cid = data_comp["createProjectV2Field"]["projectV2Field"]["id"]
         print(f"Created Component field ({cid}).")
 
 
