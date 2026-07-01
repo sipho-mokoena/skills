@@ -239,7 +239,7 @@ def cmd_update_field(args: argparse.Namespace) -> None:
 mutation {{
   updateProjectV2SingleSelectFieldOptions(input: {{
     fieldId: "{args.field_id}"
-    singleSelectOptions: {json.dumps(opts)}
+    singleSelectOptions: {fmt_single_select_options(opts)}
   }}) {{
     field {{
       __typename
