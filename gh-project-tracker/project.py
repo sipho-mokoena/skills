@@ -66,7 +66,7 @@ def resolve_owner_id(owner: str, dry_run: bool = False) -> str:
     if dry_run:
         return "<resolved-owner-id>"
     q = f'query {{ repository(owner: "{owner}", name: "_does_not_exist_") {{ owner {{ id }} }} }}'
-    data = gh_graphql(q)
+    data = gh_graphql(q, fail_ok=True)
     if data.get("repository") and data["repository"].get("owner"):
         return data["repository"]["owner"]["id"]
     q = f'query {{ user(login: "{owner}") {{ id }} }}'
@@ -98,12 +98,12 @@ def cmd_create_project(args: argparse.Namespace) -> None:
     owner_id = args.owner_id or resolve_owner_id(args.owner, args.dry_run)
     q = f"""
 mutation {{
-  createProject(input: {{ ownerId: "{owner_id}", title: "{args.title}" }}) {{
-    project {{
+  createProjectV2(input: {{ ownerId: "{owner_id}", name: "{args.title}" }}) {{
+    projectV2 {{
       id
       number
       url
-      title
+      name
     }}
   }}
 }}
@@ -111,14 +111,14 @@ mutation {{
     data = gh_graphql(q, args.dry_run, args.quiet)
     if args.dry_run:
         return
-    proj = data["createProject"]["project"]
+    proj = data["createProjectV2"]["projectV2"]
     if args.json:
         print(json.dumps(proj, indent=2))
     else:
         print(f"ID:     {proj['id']}")
         print(f"Number: {proj['number']}")
         print(f"URL:    {proj['url']}")
-        print(f"Title:  {proj['title']}")
+        print(f"Title:  {proj['name']}")
     if args.repo:
         repo_id = resolve_repo_id(args.repo, args.dry_run)
         cmd_args = argparse.Namespace(
