@@ -34,10 +34,11 @@ _PROJECT_PY = "https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-pr
 | Create a draft issue | `uv run {_PROJECT_PY} add-draft-issue <project-id> "<title>"` |
 | Set a field value | `uv run {_PROJECT_PY} set-field <project-id> <item-id> <field-id> <value> --type <type>` |
 | List board items | `uv run {_PROJECT_PY} list-items <project-id>` |
+| List fields & option IDs | `uv run {_PROJECT_PY} list-fields <project-id>` |
 | Bootstrap Status/Component | `uv run {_PROJECT_PY} batch-init <project-id>` |
 | Link project to repo | `uv run {_PROJECT_PY} link-repo <project-id> <repo-id>` |
 
-All commands accept `--dry-run` to print the GraphQL query without executing.
+All commands accept `--dry-run`, `--json`, and `--quiet` anywhere on the command line.
 
 ## Common Workflows
 
@@ -78,7 +79,17 @@ Status options (created by `batch-init`):
 | (auto) | In Review |
 | (auto) | Done |
 
-Use `list-items --json` to discover actual option IDs.
+Use `list-fields --json` to discover actual field and option IDs.
+
+### Inspect project schema before setting field values
+
+```bash
+_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-project-tracker/project.py"
+# List fields and their option IDs (use --json to get raw IDs)
+uv run ${_PROJECT_PY} list-fields <project-id> --json
+# Then use the discovered IDs with set-field
+uv run ${_PROJECT_PY} set-field <project-id> <item-id> <field-id> <option-id> --type single-select
+```
 
 ## Dry-Run
 

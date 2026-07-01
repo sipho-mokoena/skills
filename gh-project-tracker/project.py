@@ -422,6 +422,52 @@ query {{
             print()
 
 
+def cmd_list_fields(args: argparse.Namespace) -> None:
+    q = f"""
+query {{
+  node(id: "{args.project_id}") {{
+    ... on ProjectV2 {{
+      fields(first: 50) {{
+        nodes {{
+          __typename
+          ... on ProjectV2Field {{ id name dataType }}
+          ... on ProjectV2SingleSelectField {{ id name dataType options {{ id name }} }}
+          ... on ProjectV2IterationField {{ id name dataType }}
+        }}
+      }}
+    }}
+  }}
+}}
+"""
+    data = gh_graphql(q, args.dry_run, args.quiet)
+    if args.dry_run:
+        return
+    fields = data.get("node", {}).get("fields", {}).get("nodes") or []
+    use_json = args.json or args.output_format == "json"
+    if use_json:
+        print(json.dumps(fields, indent=2))
+    else:
+        if not fields:
+            print("No fields found.")
+            return
+        for f in fields:
+            typename = f.get("__typename", "")
+            if typename == "ProjectV2SingleSelectField":
+                ftype = "SINGLE_SELECT"
+            elif typename == "ProjectV2IterationField":
+                ftype = "ITERATION"
+            else:
+                ftype = f.get("dataType") or "TEXT"
+            print(f"  {f['id']}")
+            print(f"    Name:    {f['name']}")
+            print(f"    Type:    {ftype}")
+            options = f.get("options")
+            if options:
+                for opt in options:
+                    print(f"    Option:  {opt['name']} ({opt['id']})")
+            print()
+
+
 def _get_project_field_names(project_id: str, dry_run: bool = False) -> set[str]:
     q = f"""
 query {{
@@ -478,12 +524,16 @@ mutation {{
         print("Status field already exists, skipping.")
 
     if "Component" not in existing:
+        comp_opts = fmt_single_select_options([
+            {"name": "None", "color": "GRAY"},
+        ])
         q_comp = f"""
 mutation {{
   createProjectV2Field(input: {{
     projectId: "{args.project_id}"
     name: "Component"
     dataType: SINGLE_SELECT
+    singleSelectOptions: {comp_opts}
   }}) {{
     projectV2Field {{ ... on ProjectV2SingleSelectField {{ id name }} }}
   }}
@@ -526,39 +576,44 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="Output raw JSON")
     p.add_argument("--quiet", action="store_true", help="Suppress output except errors")
 
+    base = argparse.ArgumentParser(add_help=False)
+    base.add_argument("--dry-run", action="store_true", help="Print GraphQL query without executing")
+    base.add_argument("--json", action="store_true", help="Output raw JSON")
+    base.add_argument("--quiet", action="store_true", help="Suppress output except errors")
+
     sub = p.add_subparsers(dest="command", required=True)
 
-    sp = sub.add_parser("create-project", help="Create a new GitHub Project V2")
+    sp = sub.add_parser("create-project", parents=[base], help="Create a new GitHub Project V2")
     sp.add_argument("owner")
     sp.add_argument("title")
     sp.add_argument("--owner-id", help="Node ID of the owner (skips lookup)")
     sp.add_argument("--repo", help="Link project to this repo after creation (owner/repo)")
 
-    sp = sub.add_parser("list-projects", help="List projects for an owner")
+    sp = sub.add_parser("list-projects", parents=[base], help="List projects for an owner")
     sp.add_argument("owner")
 
-    sp = sub.add_parser("create-field", help="Create a custom field")
+    sp = sub.add_parser("create-field", parents=[base], help="Create a custom field")
     sp.add_argument("project_id")
     sp.add_argument("name")
     sp.add_argument("data_type", choices=["TEXT", "NUMBER", "DATE", "SINGLE_SELECT", "ITERATION"])
     sp.add_argument("--options", help="JSON string of option objects for SINGLE_SELECT")
     sp.add_argument("--options-file", help="Read options JSON from file (use '-' for stdin)")
 
-    sp = sub.add_parser("update-field", help="Update a single-select field's options")
+    sp = sub.add_parser("update-field", parents=[base], help="Update a single-select field's options")
     sp.add_argument("field_id")
     sp.add_argument("--options", help="JSON string of option objects")
     sp.add_argument("--options-file", help="Read options JSON from file (use '-' for stdin)")
 
-    sp = sub.add_parser("add-issue", help="Link an existing issue to a project")
+    sp = sub.add_parser("add-issue", parents=[base], help="Link an existing issue to a project")
     sp.add_argument("project_id")
     sp.add_argument("issue_id")
 
-    sp = sub.add_parser("add-draft-issue", help="Create a draft issue in a project")
+    sp = sub.add_parser("add-draft-issue", parents=[base], help="Create a draft issue in a project")
     sp.add_argument("project_id")
     sp.add_argument("title")
     sp.add_argument("--body", help="Draft issue body text")
 
-    sp = sub.add_parser("set-field", help="Set a field value on a project item")
+    sp = sub.add_parser("set-field", parents=[base], help="Set a field value on a project item")
     sp.add_argument("project_id")
     sp.add_argument("item_id")
     sp.add_argument("field_id")
@@ -566,16 +621,20 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--type", choices=["text", "number", "date", "single-select", "iteration"],
                     default="text", dest="field_type")
 
-    sp = sub.add_parser("list-items", help="List items in a project")
+    sp = sub.add_parser("list-items", parents=[base], help="List items in a project")
     sp.add_argument("project_id")
     sp.add_argument("--format", choices=["table", "json"], default="table", dest="output_format")
     sp.add_argument("--filter-field", help="Field ID to filter on")
     sp.add_argument("--filter-value", help="Value to filter by")
 
-    sp = sub.add_parser("batch-init", help="Set up Status + Component fields")
+    sp = sub.add_parser("list-fields", parents=[base], help="List fields and option IDs in a project")
+    sp.add_argument("project_id")
+    sp.add_argument("--format", choices=["table", "json"], default="table", dest="output_format")
+
+    sp = sub.add_parser("batch-init", parents=[base], help="Set up Status + Component fields")
     sp.add_argument("project_id")
 
-    sp = sub.add_parser("link-repo", help="Link a project to a repository")
+    sp = sub.add_parser("link-repo", parents=[base], help="Link a project to a repository")
     sp.add_argument("project_id")
     sp.add_argument("repo_id", help="Repository node ID or owner/name")
 
@@ -586,6 +645,14 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
+    # Python 3.14+ subparsers merge a fresh namespace, so parent-parser
+    # values for --dry-run / --json / --quiet are lost when the flags
+    # appear before the subcommand.  Re-check sys.argv to catch that case.
+    for flag in ("--dry-run", "--json", "--quiet"):
+        if flag in sys.argv:
+            dest = flag.lstrip("-").replace("-", "_")
+            setattr(args, dest, True)
+
     handlers = {
         "create-project": cmd_create_project,
         "list-projects": cmd_list_projects,
@@ -595,6 +662,7 @@ def main() -> None:
         "add-draft-issue": cmd_add_draft_issue,
         "set-field": cmd_set_field,
         "list-items": cmd_list_items,
+        "list-fields": cmd_list_fields,
         "batch-init": cmd_batch_init,
         "link-repo": cmd_link_repo,
     }
