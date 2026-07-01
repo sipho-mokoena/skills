@@ -20,7 +20,7 @@ No local install needed — this skill runs `project.py` directly from the repo 
 ## Remote script URL
 
 ```
-_PROJECT_PY = "https://raw.githubusercontent.com/sipho-mokoena/skills/main/skills/gh-project-tracker/project.py"
+_PROJECT_PY = "https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-project-tracker/project.py"
 ```
 
 ## Quick Reference
@@ -44,7 +44,7 @@ All commands accept `--dry-run` to print the GraphQL query without executing.
 ### Create a project from scratch
 
 ```bash
-_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/skills/gh-project-tracker/project.py"
+_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-project-tracker/project.py"
 uv run ${_PROJECT_PY} create-project sipho-mokoena "Sprint 2" --repo sipho-mokoena/simo
 uv run ${_PROJECT_PY} batch-init <project-id>
 uv run ${_PROJECT_PY} add-issue <project-id> <issue-id>
@@ -54,14 +54,14 @@ uv run ${_PROJECT_PY} set-field <project-id> <item-id> <field-id> <option-id> --
 ### Query current board state
 
 ```bash
-_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/skills/gh-project-tracker/project.py"
+_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-project-tracker/project.py"
 uv run ${_PROJECT_PY} list-items <project-id> --json
 ```
 
 ### Add a draft issue and set its status
 
 ```bash
-_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/skills/gh-project-tracker/project.py"
+_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-project-tracker/project.py"
 uv run ${_PROJECT_PY} add-draft-issue <project-id> "Investigate auth bug" --body "Details here"
 uv run ${_PROJECT_PY} set-field <project-id> <item-id> <status-field-id> <option-id> --type single-select
 ```
@@ -85,7 +85,7 @@ Use `list-items --json` to discover actual option IDs.
 Every command supports `--dry-run`. The GraphQL query/mutation is printed to stderr; nothing is executed:
 
 ```bash
-_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/skills/gh-project-tracker/project.py"
+_PROJECT_PY="https://raw.githubusercontent.com/sipho-mokoena/skills/main/gh-project-tracker/project.py"
 uv run ${_PROJECT_PY} create-project sipho-mokoena "Test" --dry-run
 ```
 
