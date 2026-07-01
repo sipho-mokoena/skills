@@ -51,6 +51,20 @@ def gh_graphql(query: str, dry_run: bool = False, quiet: bool = False, fail_ok: 
     return data["data"]
 
 
+def _load_options(args: argparse.Namespace) -> list[dict] | None:
+    """Load options from --options-file (stdin if '-') or --options string."""
+    if args.options_file:
+        src = args.options_file
+        if src == "-":
+            content = sys.stdin.read()
+        else:
+            content = Path(src).read_text()
+        return json.loads(content)
+    if args.options:
+        return json.loads(args.options)
+    return None
+
+
 def check_auth() -> None:
     result = subprocess.run(
         ["gh", "auth", "status"], capture_output=True, text=True,
@@ -192,9 +206,8 @@ def cmd_create_field(args: argparse.Namespace) -> None:
     check_auth()
     opts_json = ""
     options_arg = ""
-    if args.options:
-        parsed_opts = json.loads(args.options)
-        if args.data_type == "SINGLE_SELECT" and parsed_opts:
+    parsed_opts = _load_options(args)
+    if parsed_opts and args.data_type == "SINGLE_SELECT":
             opts_json = f'singleSelectOptions: {fmt_single_select_options(parsed_opts)}'
             options_arg = ""
 
@@ -231,10 +244,10 @@ mutation {{
 
 def cmd_update_field(args: argparse.Namespace) -> None:
     check_auth()
-    if not args.options:
-        print("ERROR: --options is required for update-field", file=sys.stderr)
+    opts = _load_options(args)
+    if opts is None:
+        print("ERROR: --options or --options-file is required for update-field", file=sys.stderr)
         sys.exit(1)
-    opts = json.loads(args.options)
     q = f"""
 mutation {{
   updateProjectV2SingleSelectFieldOptions(input: {{
@@ -528,11 +541,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("project_id")
     sp.add_argument("name")
     sp.add_argument("data_type", choices=["TEXT", "NUMBER", "DATE", "SINGLE_SELECT", "ITERATION"])
-    sp.add_argument("--options", help="JSON array of option objects for SINGLE_SELECT")
+    sp.add_argument("--options", help="JSON string of option objects for SINGLE_SELECT")
+    sp.add_argument("--options-file", help="Read options JSON from file (use '-' for stdin)")
 
     sp = sub.add_parser("update-field", help="Update a single-select field's options")
     sp.add_argument("field_id")
-    sp.add_argument("--options", required=True, help="JSON array of option objects")
+    sp.add_argument("--options", help="JSON string of option objects")
+    sp.add_argument("--options-file", help="Read options JSON from file (use '-' for stdin)")
 
     sp = sub.add_parser("add-issue", help="Link an existing issue to a project")
     sp.add_argument("project_id")
