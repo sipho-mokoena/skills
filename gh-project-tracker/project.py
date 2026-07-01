@@ -123,7 +123,7 @@ def cmd_create_project(args: argparse.Namespace) -> None:
     owner_id = args.owner_id or resolve_owner_id(args.owner, args.dry_run)
     q = f"""
 mutation {{
-  createProjectV2(input: {{ ownerId: "{owner_id}", title: "{args.title}" }}) {{
+  createProjectV2(input: {{ ownerId: "{owner_id}", title: {json.dumps(args.title)} }}) {{
     projectV2 {{
       id
       number
@@ -287,12 +287,12 @@ def cmd_add_draft_issue(args: argparse.Namespace) -> None:
     check_auth()
     body_arg = ""
     if args.body:
-        body_arg = f'body: "{args.body}"'
+        body_arg = f"body: {json.dumps(args.body)}"
     q = f"""
 mutation {{
   addProjectV2DraftIssue(input: {{
     projectId: "{args.project_id}"
-    title: "{args.title}"
+    title: {json.dumps(args.title)}
     {body_arg}
   }}) {{
     projectItem {{ id }}
@@ -375,7 +375,8 @@ query {{
     if args.dry_run:
         return
     items = data.get("node", {}).get("items", {}).get("nodes") or []
-    if args.json:
+    use_json = args.json or args.output_format == "json"
+    if use_json:
         print(json.dumps(items, indent=2))
     else:
         if not items:
