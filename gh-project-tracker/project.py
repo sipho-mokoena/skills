@@ -98,12 +98,12 @@ def cmd_create_project(args: argparse.Namespace) -> None:
     owner_id = args.owner_id or resolve_owner_id(args.owner, args.dry_run)
     q = f"""
 mutation {{
-  createProjectV2(input: {{ ownerId: "{owner_id}", name: "{args.title}" }}) {{
+  createProjectV2(input: {{ ownerId: "{owner_id}", title: "{args.title}" }}) {{
     projectV2 {{
       id
       number
       url
-      name
+      title
     }}
   }}
 }}
@@ -118,7 +118,7 @@ mutation {{
         print(f"ID:     {proj['id']}")
         print(f"Number: {proj['number']}")
         print(f"URL:    {proj['url']}")
-        print(f"Title:  {proj['name']}")
+        print(f"Title:  {proj['title']}")
     if args.repo:
         repo_id = resolve_repo_id(args.repo, args.dry_run)
         cmd_args = argparse.Namespace(
