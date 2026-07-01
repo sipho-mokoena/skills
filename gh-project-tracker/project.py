@@ -354,8 +354,7 @@ query {{
         nodes {{
           id
           type
-          title
-          content {{ __typename ... on Issue {{ number title url }} ... on PullRequest {{ number title url }} }}
+          content {{ __typename ... on Issue {{ number title url }} ... on PullRequest {{ number title url }} ... on DraftIssue {{ title }} }}
           fieldValues(first: 20) {{
             nodes {{
               __typename
@@ -384,7 +383,7 @@ query {{
             return
         for item in items:
             content = item.get("content") or {}
-            title = item.get("title") or content.get("title") or "(draft)"
+            title = content.get("title") or "(draft)"
             url = content.get("url") or ""
             status = ""
             component = ""
