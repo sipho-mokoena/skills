@@ -354,6 +354,7 @@ query {{
         nodes {{
           id
           type
+          title
           content {{ __typename ... on Issue {{ number title url }} ... on PullRequest {{ number title url }} }}
           fieldValues(first: 20) {{
             nodes {{
@@ -383,7 +384,7 @@ query {{
             return
         for item in items:
             content = item.get("content") or {}
-            title = content.get("title") or "(draft)"
+            title = item.get("title") or content.get("title") or "(draft)"
             url = content.get("url") or ""
             status = ""
             component = ""
@@ -408,16 +409,43 @@ query {{
             print()
 
 
+def _get_project_field_names(project_id: str, dry_run: bool = False) -> set[str]:
+    q = f"""
+query {{
+  node(id: "{project_id}") {{
+    ... on ProjectV2 {{
+      fields(first: 50) {{
+        nodes {{
+          __typename
+          ... on ProjectV2Field {{ name }}
+          ... on ProjectV2SingleSelectField {{ name }}
+          ... on ProjectV2IterationField {{ name }}
+        }}
+      }}
+    }}
+  }}
+}}
+"""
+    data = gh_graphql(q, dry_run=dry_run, quiet=True)
+    if dry_run:
+        return set()
+    nodes = data.get("node", {}).get("fields", {}).get("nodes") or []
+    return {n["name"] for n in nodes if n.get("name")}
+
+
 def cmd_batch_init(args: argparse.Namespace) -> None:
     check_auth()
-    status_opts = fmt_single_select_options([
-        {"name": "Backlog", "color": "GRAY", "description": ""},
-        {"name": "Ready", "color": "BLUE", "description": ""},
-        {"name": "In Progress", "color": "GREEN", "description": ""},
-        {"name": "In Review", "color": "YELLOW", "description": ""},
-        {"name": "Done", "color": "PURPLE", "description": ""},
-    ])
-    q_status = f"""
+    existing = _get_project_field_names(args.project_id, args.dry_run)
+
+    if "Status" not in existing:
+        status_opts = fmt_single_select_options([
+            {"name": "Backlog", "color": "GRAY", "description": ""},
+            {"name": "Ready", "color": "BLUE", "description": ""},
+            {"name": "In Progress", "color": "GREEN", "description": ""},
+            {"name": "In Review", "color": "YELLOW", "description": ""},
+            {"name": "Done", "color": "PURPLE", "description": ""},
+        ])
+        q_status = f"""
 mutation {{
   createProjectV2Field(input: {{
     projectId: "{args.project_id}"
@@ -429,12 +457,15 @@ mutation {{
   }}
 }}
 """
-    data_status = gh_graphql(q_status, args.dry_run, args.quiet)
-    if not args.dry_run and not args.quiet:
-        sid = data_status["createProjectV2Field"]["projectV2Field"]["id"]
-        print(f"Created Status field ({sid}) with 5 options.")
+        data_status = gh_graphql(q_status, args.dry_run, args.quiet)
+        if not args.dry_run and not args.quiet:
+            sid = data_status["createProjectV2Field"]["projectV2Field"]["id"]
+            print(f"Created Status field ({sid}) with 5 options.")
+    elif not args.quiet:
+        print("Status field already exists, skipping.")
 
-    q_comp = f"""
+    if "Component" not in existing:
+        q_comp = f"""
 mutation {{
   createProjectV2Field(input: {{
     projectId: "{args.project_id}"
@@ -445,10 +476,12 @@ mutation {{
   }}
 }}
 """
-    data_comp = gh_graphql(q_comp, args.dry_run, args.quiet)
-    if not args.dry_run and not args.quiet:
-        cid = data_comp["createProjectV2Field"]["projectV2Field"]["id"]
-        print(f"Created Component field ({cid}).")
+        data_comp = gh_graphql(q_comp, args.dry_run, args.quiet)
+        if not args.dry_run and not args.quiet:
+            cid = data_comp["createProjectV2Field"]["projectV2Field"]["id"]
+            print(f"Created Component field ({cid}).")
+    elif not args.quiet:
+        print("Component field already exists, skipping.")
 
 
 def cmd_link_repo(args: argparse.Namespace) -> None:
