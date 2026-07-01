@@ -62,6 +62,31 @@ def check_auth() -> None:
         sys.exit(1)
 
 
+def fmt_single_select_options(options: list[dict]) -> str:
+    """Format option dicts as GraphQL inline array.
+
+    Known enum fields (color) are rendered bare: {name: "Foo", color: GRAY}
+    """
+    def _val(k: str, v: Any) -> str:
+        if v is None:
+            return "null"
+        if isinstance(v, bool):
+            return str(v).lower()
+        if isinstance(v, int | float):
+            return str(v)
+        if isinstance(v, str):
+            if k in {"color"}:
+                return v  # bare enum value
+            return json.dumps(v)
+        return str(v)
+
+    items = ", ".join(
+        "{" + ", ".join(f"{k}: {_val(k, v)}" for k, v in opt.items()) + "}"
+        for opt in options
+    )
+    return f"[{items}]"
+
+
 def resolve_owner_id(owner: str, dry_run: bool = False) -> str:
     if dry_run:
         return "<resolved-owner-id>"
@@ -170,7 +195,7 @@ def cmd_create_field(args: argparse.Namespace) -> None:
     if args.options:
         parsed_opts = json.loads(args.options)
         if args.data_type == "SINGLE_SELECT" and parsed_opts:
-            opts_json = f'singleSelectOptions: {json.dumps(parsed_opts)}'
+            opts_json = f'singleSelectOptions: {fmt_single_select_options(parsed_opts)}'
             options_arg = ""
 
     q = f"""
@@ -385,7 +410,7 @@ query {{
 
 def cmd_batch_init(args: argparse.Namespace) -> None:
     check_auth()
-    status_opts = json.dumps([
+    status_opts = fmt_single_select_options([
         {"name": "Backlog", "color": "GRAY", "description": ""},
         {"name": "Ready", "color": "BLUE", "description": ""},
         {"name": "In Progress", "color": "GREEN", "description": ""},
