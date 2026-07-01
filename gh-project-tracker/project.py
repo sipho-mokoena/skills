@@ -31,7 +31,7 @@ def gh_graphql(query: str, dry_run: bool = False, quiet: bool = False, fail_ok: 
     )
     if result.returncode != 0:
         if fail_ok:
-            return None
+            return {}
         err = result.stderr.strip()
         if "INSUFFICIENT_SCOPES" in err:
             print("ERROR: gh token missing 'project' scope.", file=sys.stderr)
@@ -44,7 +44,7 @@ def gh_graphql(query: str, dry_run: bool = False, quiet: bool = False, fail_ok: 
     data = json.loads(result.stdout)
     if "errors" in data:
         if fail_ok:
-            return None
+            return {}
         for e in data["errors"]:
             print(f"GraphQL error: {e.get('message', e)}", file=sys.stderr)
         sys.exit(1)
