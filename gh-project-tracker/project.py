@@ -250,11 +250,11 @@ def cmd_update_field(args: argparse.Namespace) -> None:
         sys.exit(1)
     q = f"""
 mutation {{
-  updateProjectV2SingleSelectFieldOptions(input: {{
+  updateProjectV2Field(input: {{
     fieldId: "{args.field_id}"
     singleSelectOptions: {fmt_single_select_options(opts)}
   }}) {{
-    field {{
+    projectV2Field {{
       __typename
       ... on ProjectV2SingleSelectField {{ id name options {{ id name }} }}
     }}
@@ -264,7 +264,7 @@ mutation {{
     data = gh_graphql(q, args.dry_run, args.quiet)
     if args.dry_run:
         return
-    field = data["updateProjectV2SingleSelectFieldOptions"]["field"]
+    field = data["updateProjectV2Field"]["projectV2Field"]
     if args.json:
         print(json.dumps(field, indent=2))
     else:
@@ -525,7 +525,7 @@ mutation {{
 
     if "Component" not in existing:
         comp_opts = fmt_single_select_options([
-            {"name": "None", "color": "GRAY"},
+            {"name": "None", "color": "GRAY", "description": ""},
         ])
         q_comp = f"""
 mutation {{
@@ -596,12 +596,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("project_id")
     sp.add_argument("name")
     sp.add_argument("data_type", choices=["TEXT", "NUMBER", "DATE", "SINGLE_SELECT", "ITERATION"])
-    sp.add_argument("--options", help="JSON string of option objects for SINGLE_SELECT")
+    sp.add_argument("--options", help="JSON string of option objects (use --options-file on Windows/PowerShell to avoid quoting issues)")
     sp.add_argument("--options-file", help="Read options JSON from file (use '-' for stdin)")
 
     sp = sub.add_parser("update-field", parents=[base], help="Update a single-select field's options")
     sp.add_argument("field_id")
-    sp.add_argument("--options", help="JSON string of option objects")
+    sp.add_argument("--options", help="JSON string of option objects (use --options-file on Windows/PowerShell to avoid quoting issues)")
     sp.add_argument("--options-file", help="Read options JSON from file (use '-' for stdin)")
 
     sp = sub.add_parser("add-issue", parents=[base], help="Link an existing issue to a project")
